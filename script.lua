@@ -23,15 +23,18 @@ local Settings = {
 	InfiniteJump = false,
 	TeamCheck = false,
 	RainbowSky = false,
+
 	ThirdPerson = false,
+	Spinbot = false,
+	RainbowCrosshair = false,
 }
 
--- Alte GUI entfernen
 local OldGui = PlayerGui:FindFirstChild("SniperPrivateGUI")
 if OldGui then
 	OldGui:Destroy()
 end
 
+-- HELPERS
 local function Corner(Object, Radius)
 	local C = Instance.new("UICorner")
 	C.CornerRadius = UDim.new(0, Radius)
@@ -51,6 +54,25 @@ Gui.Name = "SniperPrivateGUI"
 Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
 Gui.Parent = PlayerGui
+
+-- CROSSHAIR
+local Crosshair = Instance.new("Frame")
+Crosshair.Name = "RainbowCrosshair"
+Crosshair.Size = UDim2.fromOffset(2, 22)
+Crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
+Crosshair.Position = UDim2.fromScale(0.5, 0.5)
+Crosshair.BackgroundColor3 = Color3.new(1, 1, 1)
+Crosshair.BorderSizePixel = 0
+Crosshair.Visible = false
+Crosshair.Parent = Gui
+
+local Crosshair2 = Instance.new("Frame")
+Crosshair2.Size = UDim2.fromOffset(22, 2)
+Crosshair2.AnchorPoint = Vector2.new(0.5, 0.5)
+Crosshair2.Position = UDim2.fromScale(0.5, 0.5)
+Crosshair2.BackgroundColor3 = Color3.new(1, 1, 1)
+Crosshair2.BorderSizePixel = 0
+Crosshair2.Parent = Gui
 
 -- KEY MENU
 local KeyFrame = Instance.new("Frame")
@@ -90,7 +112,7 @@ KeyBox.BorderSizePixel = 0
 KeyBox.PlaceholderText = "Enter key..."
 KeyBox.PlaceholderColor3 = Color3.fromRGB(120, 110, 135)
 KeyBox.Text = ""
-KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyBox.TextColor3 = Color3.new(1, 1, 1)
 KeyBox.ClearTextOnFocus = false
 KeyBox.Font = Enum.Font.Gotham
 KeyBox.TextSize = 13
@@ -103,7 +125,7 @@ SubmitButton.Position = UDim2.new(0.5, -150, 0, 145)
 SubmitButton.BackgroundColor3 = Color3.fromRGB(120, 55, 190)
 SubmitButton.BorderSizePixel = 0
 SubmitButton.Text = "UNLOCK"
-SubmitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SubmitButton.TextColor3 = Color3.new(1, 1, 1)
 SubmitButton.Font = Enum.Font.GothamBold
 SubmitButton.TextSize = 12
 SubmitButton.Parent = KeyFrame
@@ -125,7 +147,6 @@ Sidebar.Size = UDim2.fromOffset(115, 400)
 Sidebar.BackgroundColor3 = Color3.fromRGB(28, 17, 42)
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Menu
-Corner(Sidebar, 5)
 
 local Logo = Instance.new("TextLabel")
 Logo.Size = UDim2.new(1, 0, 0, 55)
@@ -159,6 +180,7 @@ end
 local Legit = CreatePage("Legit")
 local Visual = CreatePage("Visual")
 local Misc = CreatePage("Misc")
+local Rage = CreatePage("Rage")
 
 local function CreateTitle(Page, Text)
 	local Title = Instance.new("TextLabel")
@@ -250,35 +272,41 @@ local function CreateTab(Text, Y, PageName)
 	return Button
 end
 
--- LEGIT PAGE
+-- LEGIT
 CreateTitle(Legit, "LEGIT")
 CreateToggle(Legit, "Aimbot [Right Mouse]", 55, "Aimbot")
 CreateToggle(Legit, "Team Check", 100, "TeamCheck")
 
--- VISUAL PAGE
+-- VISUAL
 CreateTitle(Visual, "VISUAL")
 CreateToggle(Visual, "Boxes", 55, "Boxes")
 CreateToggle(Visual, "Names", 100, "Names")
 CreateToggle(Visual, "Distance", 145, "Distance")
 
--- MISC PAGE
+-- MISC
 CreateTitle(Misc, "MISC")
 CreateToggle(Misc, "Fly", 55, "Fly")
 CreateToggle(Misc, "Noclip", 100, "Noclip")
 CreateToggle(Misc, "Speed", 145, "Speed")
 CreateToggle(Misc, "Infinite Jump", 190, "InfiniteJump")
 CreateToggle(Misc, "Rainbow Sky", 235, "RainbowSky")
-CreateToggle(Misc, "Third Person", 280, "ThirdPerson")
+
+-- RAGE
+CreateTitle(Rage, "RAGE")
+CreateToggle(Rage, "Third Person", 55, "ThirdPerson")
+CreateToggle(Rage, "Spinbot", 100, "Spinbot")
+CreateToggle(Rage, "Rainbow Crosshair", 145, "RainbowCrosshair")
 
 local LegitButton = CreateTab("  LEGIT", 65, "Legit")
 CreateTab("  VISUAL", 105, "Visual")
 CreateTab("  MISC", 145, "Misc")
+CreateTab("  RAGE", 185, "Rage")
 
 Legit.Visible = true
 LegitButton.BackgroundColor3 = Color3.fromRGB(65, 35, 90)
 ActiveButton = LegitButton
 
--- KEY CHECK
+-- KEY SYSTEM
 local function CheckKey()
 	if KeyBox.Text == CorrectKey then
 		KeyFrame:Destroy()
@@ -340,10 +368,9 @@ UIS.InputBegan:Connect(function(Input, Processed)
 	end
 end)
 
--- GET CLOSEST PLAYER
+-- GET CLOSEST TARGET
 local function GetClosestPlayer()
 	local CurrentCamera = Workspace.CurrentCamera
-
 	if not CurrentCamera then
 		return nil
 	end
@@ -391,21 +418,20 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	local Target = GetClosestPlayer()
-
-	if not Target or not Target.Character then
-		return
-	end
-
-	local Root = Target.Character:FindFirstChild("HumanoidRootPart")
 	local CurrentCamera = Workspace.CurrentCamera
 
-	if Root and CurrentCamera then
-		local TargetCFrame = CFrame.new(
-			CurrentCamera.CFrame.Position,
-			Root.Position
-		)
+	if Target and Target.Character and CurrentCamera then
+		local Root = Target.Character:FindFirstChild("HumanoidRootPart")
 
-		CurrentCamera.CFrame = CurrentCamera.CFrame:Lerp(TargetCFrame, 0.8)
+		if Root then
+			local TargetCFrame = CFrame.new(
+				CurrentCamera.CFrame.Position,
+				Root.Position
+			)
+
+			CurrentCamera.CFrame =
+				CurrentCamera.CFrame:Lerp(TargetCFrame, 0.8)
+		end
 	end
 end)
 
@@ -538,18 +564,23 @@ RunService.RenderStepped:Connect(function()
 	if UIS:IsKeyDown(Enum.KeyCode.W) then
 		Direction += CurrentCamera.CFrame.LookVector
 	end
+
 	if UIS:IsKeyDown(Enum.KeyCode.S) then
 		Direction -= CurrentCamera.CFrame.LookVector
 	end
+
 	if UIS:IsKeyDown(Enum.KeyCode.A) then
 		Direction -= CurrentCamera.CFrame.RightVector
 	end
+
 	if UIS:IsKeyDown(Enum.KeyCode.D) then
 		Direction += CurrentCamera.CFrame.RightVector
 	end
+
 	if UIS:IsKeyDown(Enum.KeyCode.Space) then
 		Direction += Vector3.new(0, 1, 0)
 	end
+
 	if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
 		Direction -= Vector3.new(0, 1, 0)
 	end
@@ -584,7 +615,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- THIRD PERSON
+-- RAGE: THIRD PERSON
 RunService.RenderStepped:Connect(function()
 	if not Settings.ThirdPerson then
 		return
@@ -594,20 +625,49 @@ RunService.RenderStepped:Connect(function()
 	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
 	local CurrentCamera = Workspace.CurrentCamera
 
-	if not Root or not CurrentCamera then
+	if Root and CurrentCamera then
+		local CameraPosition =
+			Root.Position
+			- Root.CFrame.LookVector * 12
+			+ Vector3.new(0, 5, 0)
+
+		CurrentCamera.CFrame = CFrame.new(
+			CameraPosition,
+			Root.Position + Vector3.new(0, 2, 0)
+		)
+	end
+end)
+
+-- RAGE: SPINBOT
+RunService.RenderStepped:Connect(function()
+	if not Settings.Spinbot then
 		return
 	end
 
-	-- Kamera hinter dem Spieler
-	local CameraPosition =
-		Root.Position
-		- Root.CFrame.LookVector * 12
-		+ Vector3.new(0, 5, 0)
+	local Character = Player.Character
+	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
 
-	CurrentCamera.CFrame = CFrame.new(
-		CameraPosition,
-		Root.Position + Vector3.new(0, 2, 0)
-	)
+	if Root then
+		Root.CFrame = Root.CFrame * CFrame.Angles(
+			0,
+			math.rad(12),
+			0
+		)
+	end
 end)
 
-print("SNIPER PRIVATE LOADED")
+-- RAGE: RAINBOW CROSSHAIR
+RunService.RenderStepped:Connect(function()
+	Crosshair.Visible = Settings.RainbowCrosshair
+	Crosshair2.Visible = Settings.RainbowCrosshair
+
+	if Settings.RainbowCrosshair then
+		local Hue = (time() * 0.25) % 1
+		local Rainbow = Color3.fromHSV(Hue, 1, 1)
+
+		Crosshair.BackgroundColor3 = Rainbow
+		Crosshair2.BackgroundColor3 = Rainbow
+	end
+end)
+
+print("SNIPER PRIVATE LOADED - RAGE TAB ENABLED")
