@@ -14,27 +14,31 @@ local CorrectKey = "sniperprivatecheat"
 
 local Settings = {
 	Aimbot = false,
+	TeamCheck = false,
+
 	Boxes = false,
 	Names = false,
 	Distance = false,
+
 	Fly = false,
 	Noclip = false,
 	Speed = false,
 	InfiniteJump = false,
-	TeamCheck = false,
 	RainbowSky = false,
 
 	ThirdPerson = false,
 	Spinbot = false,
 	RainbowCrosshair = false,
+	CharacterLookDown = false,
 }
 
+-- Alte GUI entfernen
 local OldGui = PlayerGui:FindFirstChild("SniperPrivateGUI")
 if OldGui then
 	OldGui:Destroy()
 end
 
--- HELPERS
+-- Hilfsfunktionen
 local function Corner(Object, Radius)
 	local C = Instance.new("UICorner")
 	C.CornerRadius = UDim.new(0, Radius)
@@ -55,24 +59,26 @@ Gui.ResetOnSpawn = false
 Gui.IgnoreGuiInset = true
 Gui.Parent = PlayerGui
 
--- CROSSHAIR
-local Crosshair = Instance.new("Frame")
-Crosshair.Name = "RainbowCrosshair"
-Crosshair.Size = UDim2.fromOffset(2, 22)
-Crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
-Crosshair.Position = UDim2.fromScale(0.5, 0.5)
-Crosshair.BackgroundColor3 = Color3.new(1, 1, 1)
-Crosshair.BorderSizePixel = 0
-Crosshair.Visible = false
-Crosshair.Parent = Gui
+-- Rainbow Crosshair
+local CrosshairVertical = Instance.new("Frame")
+CrosshairVertical.Name = "RainbowCrosshairVertical"
+CrosshairVertical.AnchorPoint = Vector2.new(0.5, 0.5)
+CrosshairVertical.Size = UDim2.fromOffset(2, 24)
+CrosshairVertical.Position = UDim2.fromScale(0.5, 0.5)
+CrosshairVertical.BackgroundColor3 = Color3.new(1, 1, 1)
+CrosshairVertical.BorderSizePixel = 0
+CrosshairVertical.Visible = false
+CrosshairVertical.Parent = Gui
 
-local Crosshair2 = Instance.new("Frame")
-Crosshair2.Size = UDim2.fromOffset(22, 2)
-Crosshair2.AnchorPoint = Vector2.new(0.5, 0.5)
-Crosshair2.Position = UDim2.fromScale(0.5, 0.5)
-Crosshair2.BackgroundColor3 = Color3.new(1, 1, 1)
-Crosshair2.BorderSizePixel = 0
-Crosshair2.Parent = Gui
+local CrosshairHorizontal = Instance.new("Frame")
+CrosshairHorizontal.Name = "RainbowCrosshairHorizontal"
+CrosshairHorizontal.AnchorPoint = Vector2.new(0.5, 0.5)
+CrosshairHorizontal.Size = UDim2.fromOffset(24, 2)
+CrosshairHorizontal.Position = UDim2.fromScale(0.5, 0.5)
+CrosshairHorizontal.BackgroundColor3 = Color3.new(1, 1, 1)
+CrosshairHorizontal.BorderSizePixel = 0
+CrosshairHorizontal.Visible = false
+CrosshairHorizontal.Parent = Gui
 
 -- KEY MENU
 local KeyFrame = Instance.new("Frame")
@@ -173,6 +179,7 @@ local function CreatePage(Name)
 	Page.BackgroundTransparency = 1
 	Page.Visible = false
 	Page.Parent = Content
+
 	Pages[Name] = Page
 	return Page
 end
@@ -274,7 +281,7 @@ end
 
 -- LEGIT
 CreateTitle(Legit, "LEGIT")
-CreateToggle(Legit, "Aimbot [Right Mouse]", 55, "Aimbot")
+CreateToggle(Legit, "Aim Assist [Right Mouse]", 55, "Aimbot")
 CreateToggle(Legit, "Team Check", 100, "TeamCheck")
 
 -- VISUAL
@@ -296,6 +303,7 @@ CreateTitle(Rage, "RAGE")
 CreateToggle(Rage, "Third Person", 55, "ThirdPerson")
 CreateToggle(Rage, "Spinbot", 100, "Spinbot")
 CreateToggle(Rage, "Rainbow Crosshair", 145, "RainbowCrosshair")
+CreateToggle(Rage, "Character Look Down", 190, "CharacterLookDown")
 
 local LegitButton = CreateTab("  LEGIT", 65, "Legit")
 CreateTab("  VISUAL", 105, "Visual")
@@ -325,7 +333,7 @@ KeyBox.FocusLost:Connect(function(EnterPressed)
 	end
 end)
 
--- DRAG MENU
+-- MENU DRAG
 local Dragging = false
 local DragStart
 local StartPosition
@@ -368,15 +376,15 @@ UIS.InputBegan:Connect(function(Input, Processed)
 	end
 end)
 
--- GET CLOSEST TARGET
+-- CLOSEST PLAYER
 local function GetClosestPlayer()
-	local CurrentCamera = Workspace.CurrentCamera
-	if not CurrentCamera then
+	local Camera = Workspace.CurrentCamera
+	if not Camera then
 		return nil
 	end
 
 	local MousePosition = UIS:GetMouseLocation()
-	local ClosestPlayer = nil
+	local ClosestTarget = nil
 	local ClosestDistance = math.huge
 
 	for _, Target in ipairs(Players:GetPlayers()) do
@@ -387,7 +395,7 @@ local function GetClosestPlayer()
 				local Root = Character and Character:FindFirstChild("HumanoidRootPart")
 
 				if Humanoid and Humanoid.Health > 0 and Root then
-					local Position, Visible = CurrentCamera:WorldToViewportPoint(Root.Position)
+					local Position, Visible = Camera:WorldToViewportPoint(Root.Position)
 
 					if Visible and Position.Z > 0 then
 						local Distance = (
@@ -396,7 +404,7 @@ local function GetClosestPlayer()
 
 						if Distance < ClosestDistance then
 							ClosestDistance = Distance
-							ClosestPlayer = Target
+							ClosestTarget = Target
 						end
 					end
 				end
@@ -404,7 +412,7 @@ local function GetClosestPlayer()
 		end
 	end
 
-	return ClosestPlayer
+	return ClosestTarget
 end
 
 -- AIM ASSIST
@@ -418,25 +426,24 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	local Target = GetClosestPlayer()
-	local CurrentCamera = Workspace.CurrentCamera
+	local Camera = Workspace.CurrentCamera
 
-	if Target and Target.Character and CurrentCamera then
+	if Target and Target.Character and Camera then
 		local Root = Target.Character:FindFirstChild("HumanoidRootPart")
 
 		if Root then
 			local TargetCFrame = CFrame.new(
-				CurrentCamera.CFrame.Position,
+				Camera.CFrame.Position,
 				Root.Position
 			)
 
-			CurrentCamera.CFrame =
-				CurrentCamera.CFrame:Lerp(TargetCFrame, 0.8)
+			Camera.CFrame = Camera.CFrame:Lerp(TargetCFrame, 0.8)
 		end
 	end
 end)
 
 -- ESP
-local function UpdateESP()
+RunService.RenderStepped:Connect(function()
 	for _, Target in ipairs(Players:GetPlayers()) do
 		if Target ~= Player and Target.Character then
 			local Character = Target.Character
@@ -507,9 +514,7 @@ local function UpdateESP()
 			end
 		end
 	end
-end
-
-RunService.RenderStepped:Connect(UpdateESP)
+end)
 
 -- INFINITE JUMP
 UIS.JumpRequest:Connect(function()
@@ -533,7 +538,11 @@ RunService.Stepped:Connect(function()
 	local Humanoid = Character:FindFirstChildOfClass("Humanoid")
 
 	if Humanoid then
-		Humanoid.WalkSpeed = Settings.Speed and 32 or 16
+		if Settings.Speed then
+			Humanoid.WalkSpeed = 32
+		else
+			Humanoid.WalkSpeed = 16
+		end
 	end
 
 	if Settings.Noclip then
@@ -553,28 +562,28 @@ RunService.RenderStepped:Connect(function()
 
 	local Character = Player.Character
 	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-	local CurrentCamera = Workspace.CurrentCamera
+	local Camera = Workspace.CurrentCamera
 
-	if not Root or not CurrentCamera then
+	if not Root or not Camera then
 		return
 	end
 
 	local Direction = Vector3.zero
 
 	if UIS:IsKeyDown(Enum.KeyCode.W) then
-		Direction += CurrentCamera.CFrame.LookVector
+		Direction += Camera.CFrame.LookVector
 	end
 
 	if UIS:IsKeyDown(Enum.KeyCode.S) then
-		Direction -= CurrentCamera.CFrame.LookVector
+		Direction -= Camera.CFrame.LookVector
 	end
 
 	if UIS:IsKeyDown(Enum.KeyCode.A) then
-		Direction -= CurrentCamera.CFrame.RightVector
+		Direction -= Camera.CFrame.RightVector
 	end
 
 	if UIS:IsKeyDown(Enum.KeyCode.D) then
-		Direction += CurrentCamera.CFrame.RightVector
+		Direction += Camera.CFrame.RightVector
 	end
 
 	if UIS:IsKeyDown(Enum.KeyCode.Space) then
@@ -587,8 +596,6 @@ RunService.RenderStepped:Connect(function()
 
 	if Direction.Magnitude > 0 then
 		Root.AssemblyLinearVelocity = Direction.Unit * 50
-	else
-		Root.AssemblyLinearVelocity = Vector3.zero
 	end
 end)
 
@@ -615,7 +622,7 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- RAGE: THIRD PERSON
+-- THIRD PERSON
 RunService.RenderStepped:Connect(function()
 	if not Settings.ThirdPerson then
 		return
@@ -623,22 +630,22 @@ RunService.RenderStepped:Connect(function()
 
 	local Character = Player.Character
 	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-	local CurrentCamera = Workspace.CurrentCamera
+	local Camera = Workspace.CurrentCamera
 
-	if Root and CurrentCamera then
+	if Root and Camera then
 		local CameraPosition =
 			Root.Position
 			- Root.CFrame.LookVector * 12
 			+ Vector3.new(0, 5, 0)
 
-		CurrentCamera.CFrame = CFrame.new(
+		Camera.CFrame = CFrame.new(
 			CameraPosition,
 			Root.Position + Vector3.new(0, 2, 0)
 		)
 	end
 end)
 
--- RAGE: SPINBOT
+-- SPINBOT
 RunService.RenderStepped:Connect(function()
 	if not Settings.Spinbot then
 		return
@@ -656,18 +663,39 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- RAGE: RAINBOW CROSSHAIR
+-- RAINBOW CROSSHAIR
 RunService.RenderStepped:Connect(function()
-	Crosshair.Visible = Settings.RainbowCrosshair
-	Crosshair2.Visible = Settings.RainbowCrosshair
+	local Enabled = Settings.RainbowCrosshair
 
-	if Settings.RainbowCrosshair then
+	CrosshairVertical.Visible = Enabled
+	CrosshairHorizontal.Visible = Enabled
+
+	if Enabled then
 		local Hue = (time() * 0.25) % 1
 		local Rainbow = Color3.fromHSV(Hue, 1, 1)
 
-		Crosshair.BackgroundColor3 = Rainbow
-		Crosshair2.BackgroundColor3 = Rainbow
+		CrosshairVertical.BackgroundColor3 = Rainbow
+		CrosshairHorizontal.BackgroundColor3 = Rainbow
 	end
 end)
 
-print("SNIPER PRIVATE LOADED - RAGE TAB ENABLED")
+-- CHARACTER LOOK DOWN
+-- Die Kamera bleibt frei. Nur die lokale Kopf-/Neck-Pose wird verändert.
+RunService.RenderStepped:Connect(function()
+	local Character = Player.Character
+	if not Character then
+		return
+	end
+
+	local Neck = Character:FindFirstChild("Neck", true)
+
+	if Neck and Neck:IsA("Motor6D") then
+		if Settings.CharacterLookDown then
+			Neck.Transform = CFrame.Angles(math.rad(-55), 0, 0)
+		else
+			Neck.Transform = CFrame.new()
+		end
+	end
+end)
+
+print("SNIPER PRIVATE LOADED")
