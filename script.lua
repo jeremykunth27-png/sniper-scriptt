@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
 
 local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
@@ -21,8 +22,11 @@ local Settings = {
 	Speed = false,
 	InfiniteJump = false,
 	TeamCheck = false,
+	RainbowSky = false,
+	ThirdPerson = false,
 }
 
+-- Alte GUI entfernen
 local OldGui = PlayerGui:FindFirstChild("SniperPrivateGUI")
 if OldGui then
 	OldGui:Destroy()
@@ -107,8 +111,8 @@ Corner(SubmitButton, 5)
 
 -- MAIN MENU
 local Menu = Instance.new("Frame")
-Menu.Size = UDim2.fromOffset(440, 330)
-Menu.Position = UDim2.new(0.5, -220, 0.5, -165)
+Menu.Size = UDim2.fromOffset(440, 400)
+Menu.Position = UDim2.new(0.5, -220, 0.5, -200)
 Menu.BackgroundColor3 = Color3.fromRGB(20, 13, 30)
 Menu.BorderSizePixel = 0
 Menu.Visible = false
@@ -117,7 +121,7 @@ Corner(Menu, 5)
 Stroke(Menu, Color3.fromRGB(120, 60, 190))
 
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.fromOffset(115, 330)
+Sidebar.Size = UDim2.fromOffset(115, 400)
 Sidebar.BackgroundColor3 = Color3.fromRGB(28, 17, 42)
 Sidebar.BorderSizePixel = 0
 Sidebar.Parent = Menu
@@ -246,20 +250,25 @@ local function CreateTab(Text, Y, PageName)
 	return Button
 end
 
+-- LEGIT PAGE
 CreateTitle(Legit, "LEGIT")
 CreateToggle(Legit, "Aimbot [Right Mouse]", 55, "Aimbot")
 CreateToggle(Legit, "Team Check", 100, "TeamCheck")
 
+-- VISUAL PAGE
 CreateTitle(Visual, "VISUAL")
 CreateToggle(Visual, "Boxes", 55, "Boxes")
 CreateToggle(Visual, "Names", 100, "Names")
 CreateToggle(Visual, "Distance", 145, "Distance")
 
+-- MISC PAGE
 CreateTitle(Misc, "MISC")
 CreateToggle(Misc, "Fly", 55, "Fly")
 CreateToggle(Misc, "Noclip", 100, "Noclip")
 CreateToggle(Misc, "Speed", 145, "Speed")
 CreateToggle(Misc, "Infinite Jump", 190, "InfiniteJump")
+CreateToggle(Misc, "Rainbow Sky", 235, "RainbowSky")
+CreateToggle(Misc, "Third Person", 280, "ThirdPerson")
 
 local LegitButton = CreateTab("  LEGIT", 65, "Legit")
 CreateTab("  VISUAL", 105, "Visual")
@@ -333,8 +342,9 @@ end)
 
 -- GET CLOSEST PLAYER
 local function GetClosestPlayer()
-	local Camera = Workspace.CurrentCamera
-	if not Camera then
+	local CurrentCamera = Workspace.CurrentCamera
+
+	if not CurrentCamera then
 		return nil
 	end
 
@@ -350,7 +360,7 @@ local function GetClosestPlayer()
 				local Root = Character and Character:FindFirstChild("HumanoidRootPart")
 
 				if Humanoid and Humanoid.Health > 0 and Root then
-					local Position, Visible = Camera:WorldToViewportPoint(Root.Position)
+					local Position, Visible = CurrentCamera:WorldToViewportPoint(Root.Position)
 
 					if Visible and Position.Z > 0 then
 						local Distance = (
@@ -370,7 +380,7 @@ local function GetClosestPlayer()
 	return ClosestPlayer
 end
 
--- VERY STRONG AIMBOT
+-- AIM ASSIST
 RunService.RenderStepped:Connect(function()
 	if not Settings.Aimbot then
 		return
@@ -387,16 +397,15 @@ RunService.RenderStepped:Connect(function()
 	end
 
 	local Root = Target.Character:FindFirstChild("HumanoidRootPart")
-	local Camera = Workspace.CurrentCamera
+	local CurrentCamera = Workspace.CurrentCamera
 
-	if Root and Camera then
+	if Root and CurrentCamera then
 		local TargetCFrame = CFrame.new(
-			Camera.CFrame.Position,
+			CurrentCamera.CFrame.Position,
 			Root.Position
 		)
 
-		-- 0.8 = MUCH STRONGER
-		Camera.CFrame = Camera.CFrame:Lerp(TargetCFrame, 0.8)
+		CurrentCamera.CFrame = CurrentCamera.CFrame:Lerp(TargetCFrame, 0.8)
 	end
 end)
 
@@ -518,25 +527,25 @@ RunService.RenderStepped:Connect(function()
 
 	local Character = Player.Character
 	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
-	local Camera = Workspace.CurrentCamera
+	local CurrentCamera = Workspace.CurrentCamera
 
-	if not Root or not Camera then
+	if not Root or not CurrentCamera then
 		return
 	end
 
 	local Direction = Vector3.zero
 
 	if UIS:IsKeyDown(Enum.KeyCode.W) then
-		Direction += Camera.CFrame.LookVector
+		Direction += CurrentCamera.CFrame.LookVector
 	end
 	if UIS:IsKeyDown(Enum.KeyCode.S) then
-		Direction -= Camera.CFrame.LookVector
+		Direction -= CurrentCamera.CFrame.LookVector
 	end
 	if UIS:IsKeyDown(Enum.KeyCode.A) then
-		Direction -= Camera.CFrame.RightVector
+		Direction -= CurrentCamera.CFrame.RightVector
 	end
 	if UIS:IsKeyDown(Enum.KeyCode.D) then
-		Direction += Camera.CFrame.RightVector
+		Direction += CurrentCamera.CFrame.RightVector
 	end
 	if UIS:IsKeyDown(Enum.KeyCode.Space) then
 		Direction += Vector3.new(0, 1, 0)
@@ -552,4 +561,53 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
-print("SNIPER PRIVATE LOADED - STRONG AIM")
+-- RAINBOW SKY
+local OriginalAmbient = Lighting.Ambient
+local OriginalOutdoorAmbient = Lighting.OutdoorAmbient
+local OriginalColorShiftTop = Lighting.ColorShift_Top
+local OriginalColorShiftBottom = Lighting.ColorShift_Bottom
+
+RunService.RenderStepped:Connect(function()
+	if Settings.RainbowSky then
+		local Hue = (time() * 0.12) % 1
+		local Rainbow = Color3.fromHSV(Hue, 0.8, 1)
+
+		Lighting.Ambient = Rainbow
+		Lighting.OutdoorAmbient = Rainbow
+		Lighting.ColorShift_Top = Rainbow
+		Lighting.ColorShift_Bottom = Rainbow
+	else
+		Lighting.Ambient = OriginalAmbient
+		Lighting.OutdoorAmbient = OriginalOutdoorAmbient
+		Lighting.ColorShift_Top = OriginalColorShiftTop
+		Lighting.ColorShift_Bottom = OriginalColorShiftBottom
+	end
+end)
+
+-- THIRD PERSON
+RunService.RenderStepped:Connect(function()
+	if not Settings.ThirdPerson then
+		return
+	end
+
+	local Character = Player.Character
+	local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+	local CurrentCamera = Workspace.CurrentCamera
+
+	if not Root or not CurrentCamera then
+		return
+	end
+
+	-- Kamera hinter dem Spieler
+	local CameraPosition =
+		Root.Position
+		- Root.CFrame.LookVector * 12
+		+ Vector3.new(0, 5, 0)
+
+	CurrentCamera.CFrame = CFrame.new(
+		CameraPosition,
+		Root.Position + Vector3.new(0, 2, 0)
+	)
+end)
+
+print("SNIPER PRIVATE LOADED")
